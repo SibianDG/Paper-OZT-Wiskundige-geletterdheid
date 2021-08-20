@@ -1,0 +1,98 @@
+---
+title: "Dataset Wiskundige Geletterdheid"
+subtitle: "Data cleaning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+In dit document geven we enkele voorbeelden van hoe je de dataset (in het bestand `npe-1920-wiskundige-geletterdheid.csv`) kan inlezen en opschonen zodat je de data makkelijker kan verwerken en visualiseren. **De dataset zelf moet ongewijzigd blijven.** We streven er naar dat onderzoeksresultaten reproduceerbaar zijn. Door wijzigingen aan te brengen in de dataset (ook al zijn die goed bedoeld en op zich correct), verberg je stappen in het onderzoeksproces en bestaat het gevaar dat je achteraf niet meer kan nagaan hoe de resultaten bekomen zijn.
+
+Alle nodige wijzigingen worden dus aangebracht *na* het inlezen van de dataset, aan de hand van R-functies. Op die manier documenteer je ook welke stappen je genomen hebt om de dataset op te schonen, samen te vatten, enz. Gebruik de "tidyverse"-functies om wijzigingen aan te brengen in de dataset zoals bv. `mutate()` hieronder. Tussen elke opeenvolgende operatie schrijf je `%>%`, de zgn. "pipe-operator".
+
+Voor meer info over de tidyverse, zie bv.
+
+- https://www.tidyverse.org/learn/
+- https://r4ds.had.co.nz/ (R for Data Science)
+- https://rstudio.com/resources/cheatsheets/ (RStudio cheat sheets)
+
+## Data inlezen
+
+Gebruik de `read_csv()` functie uit de Tidyverse om een CSV-bestand in te lezen:
+
+```
+math_prof <- read_csv('data/npe-1920-wiskundige-geletterdheid.csv')
+```
+
+Hiermee sla je de onbewerkte onderzoeksresultaten op in een variabele `math_prof`. Voor je de inhoud van deze variabele kan gebruiken, moet je rekening houden met het volgende:
+
+- De resultaten van de wiskundetoets zijn vraag per vraag opgenomen. Je moet zelf de nodige totalen berekenen.
+- Categorische data is niet gesorteerd. In het geval van ordinale variabelen moet je deze zelf in de juiste volgorde zetten.
+
+## Rekenen met data
+
+Via de functie `mutate()` kan je kolommen wijzigen of toevoegen op basis van berekeningen met bestaande data. Als we de score op de wiskundetoets per niveau (lager, 1e of 2e graad secundair) willen kennen, dan moeten we die uitrekenen. Dat kan zo:
+
+```
+mutate(TestLevel1 = TestQ01 + TestQ02 + TestQ03 + TestQ04 + TestQ05)
+```
+
+In de dataset wordt dan een nieuwe variabele **TestLevel1** toegevoegd die de som is van de waarde van variabelen **TestQ01** t/m **TestQ05**.
+
+## Ordenen van waarden bij ordinale variabelen
+
+Ordinale variabelen moet je zelf ordenen. Als je dit niet doet, zullen in grafieken de verschillende categorieën door elkaar staan of verkeerd geordend zijn. Daarvoor kan je de `factor()` functie gebruiken, bv.:
+
+```
+mutate(SecondaryEducation = factor(SecondaryEducation, levels = c(
+    "Kunstsecundair Onderwijs (KSO)",
+    "Beroepssecundair Onderwijs (BSO)",
+    "Technisch Secundair Onderwijs (TSO)",
+    "Algemeen Secundair Onderwijs (ASO)",
+    "Anders"
+)))
+```
+
+Hier wordt de variabele **SecondaryEducation** met `mutate()` omgezet in een ordinale variabele met behul van `factor()`. De optie `levels` bepaalt de volgorde van de verschillende categorieën. Je kan de verschillende voorkomende waarden van een variabele opvragen via de functie `unique()`, bv:
+
+```
+r$> unique(math_prof$Gender)
+[1] "Mannelijk"  "Vrouwelijk"
+```
+
+Dus de variabele **Gender** (in dit geval *geen* ordinale variabele!) heeft in de dataset twee verschillende waarden.
+
+## Uitgewerkt voorbeeld
+
+Hieronder volgt een uitgewerkt voorbeeld. De toetsresultaten zijn samengevat per niveau (lager, 1e en 2e graad secundair) in de variabelen **TestLevel1**, **2** en **3** en ook het totaal is berekend in **TestTotal**. Verder zijn ook de variabelen **EducationFather** en **SecondaryEducation** gesorteerd omdat het ordinale variabelen zijn.
+
+```{r,message=FALSE}
+math_prof <- read_csv('npe-1920-wiskundige-geletterdheid.csv') %>%
+  mutate(TestLevel1 = TestQ01 + TestQ02 + TestQ03 + TestQ04 + TestQ05) %>%
+  mutate(TestLevel2 = TestQ06 + TestQ07 + TestQ08 + TestQ09 + TestQ10) %>%
+  mutate(TestLevel3 = TestQ11 + TestQ12 + TestQ13 + TestQ14 + TestQ15) %>%
+  mutate(TestTotal = TestLevel1 + TestLevel2 + TestLevel3) %>%
+  mutate(EducationFather = factor(EducationFather, levels = c(
+    "Ik weet het niet",
+    "Geen diploma",
+    "Lager onderwijs",
+    "Lager secundair onderwijs",
+    "Hoger secundair onderwijs",
+    "Hoger beroepsonderwijs (HBO5)",
+    "Bachelor of equivalent (hogeschool)",
+    "Master of equivalent (universiteit)",
+    "Doctoraat"
+  ))) %>%
+  mutate(SecondaryEducation = factor(SecondaryEducation, levels = c(
+    "Kunstsecundair Onderwijs (KSO)",
+    "Beroepssecundair Onderwijs (BSO)",
+    "Technisch Secundair Onderwijs (TSO)",
+    "Algemeen Secundair Onderwijs (ASO)",
+    "Anders"
+  )))
+```
+
+Het script waarin jullie de dataset analyseren begint dus met het inlezen van de data en het aanbrengen van de nodige wijzigingen. Doe dit enkel voor de variabelen die relevant zijn voor de specifieke onderzoeksvraag die jullie team gekozen heeft.

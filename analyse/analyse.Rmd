@@ -1,0 +1,790 @@
+---
+title: "Het hebben van een andere moedertaal, frequent een andere taal spreken of land van geboorte, heeft geen invloed op de wiskundige geletterdheid bij studenten in het Vlaamse hoger onderwijs."
+subtitle: "Analyse resultaten"
+author: "Bauters Isaac, De Gussem Sibian, Dirven Thomas, Krick Bram, Vermaerke Gaëtan"
+date: "08/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(data.table)
+#library(ggpubr)
+#library(ggthemes)
+#theme_stata()
+```
+
+
+# Hypothese
+> Het hebben van een andere moedertaal, frequent een andere taal spreken of land van geboorte, heeft geen invloed op de wiskundige geletterdheid bij studenten in het Vlaamse hoger onderwijs.
+
+# Stap 1: Variabelen categoriseren
+
+## Onafhankelijke variabelen:
+NativeLanguage, OtherLanguages, BirthCountry
+
+## Afhankelijke variabelen:
+TestQ01-TestQ05, TestQ06-TestQ10, TestQ11-TestQ15
+
+### Kwalitatief - Nominaal
+NativeLanguage, OtherLanguages, BirthCountry
+
+### Kwantitatief- Ratio
+TestQ01-TestQ05, TestQ06-TestQ10, TestQ11-TestQ15
+
+# Stap 2: De algemene dataset inlezen en bekijken
+
+Inlezen van de dataset:
+
+```{r}
+data <- read.csv("../data/npe-1920-wiskundige-geletterdheid.csv", sep = ",")
+```
+
+Steekproefgrootte bepalen:
+
+```{r}
+if (nrow(data) >= 30){
+  sprintf("Grote steekproef: %s", nrow(data))
+} else {
+  print("Kleine steekproef: %s", nrow(data))
+}
+```
+
+Aantal studenten die geen Nederlands spreken als moedertaal:
+
+```{r}
+sprintf("Aantal Nederlandstaligen: %s", nrow(data[data$NativeLanguage == "Nederlands", ]))
+sprintf("Aantal niet-Nederlandstaligen: %s", nrow(data[data$NativeLanguage != "Nederlands",]))
+```
+
+
+## Grafieken GradeMath4IT
+
+De nodige variabelen in een nieuwe dataset steken en alle lege waarden eruit filteren.
+
+```{r}
+math4IT <- data[, c("NativeLanguage", "BirthCountry" ,"OtherLanguages", "GradeMath4IT")]
+math4IT <- math4IT %>% filter_all(all_vars(!is.na(.)))
+```
+
+math4IT-data opdelen in NativeLanguage "Nederlands" en "Overige" om zo twee groepen te bekomen.
+
+```{r}
+math4IT$NativeLanguage <- replace(x = math4IT$NativeLanguage, 
+                               list =  !math4IT$NativeLanguage %in% c('Nederlands'), 
+                               values =  'Overige')
+```
+
+math4IT-data opdelen in BirthCountry "Belgium" en "Other" om zo twee groepen te bekomen.
+
+```{r}
+math4IT$BirthCountry <- ifelse(grepl("BelgiÃ«", math4IT$BirthCountry), "Belgium", "Other")
+#math4IT$BirthCountry <- ifelse(grepl("België", math4IT$BirthCountry), "Belgium", "Other")
+```
+
+math4IT-data opdelen in personen die thuis Nederlands spreken en personen die thuis geen Nederlands spreken om zo twee groepen te bekomen.
+
+```{r}
+math4IT$Nederlands <- replace(x = math4IT$OtherLanguages,
+                                 list =  math4IT$OtherLanguages %in% c('Nederlands'), 
+                                 values =  'Yes')
+
+
+math4IT$Nederlands[math4IT$NativeLanguage == "Nederlands"] <- "Yes"
+math4IT$Nederlands <- ifelse(grepl("Nederlands", math4IT$Nederlands), "Yes", math4IT$Nederlands)
+math4IT$Nederlands[math4IT$Nederlands != "Yes"] <- "No"
+```
+
+
+### GradeMath4IT ~ NativeLanguage
+
+Basic boxplot tekenen:
+
+```{r}
+ggplot(math4IT, aes(x=GradeMath4IT, y=NativeLanguage)) + 
+  geom_boxplot()
+```
+
+Uitgebreide boxplot tekenen met alle punten:
+
+```{r}
+ggplot(data = math4IT, mapping = aes(x = reorder(NativeLanguage, GradeMath4IT, FUN = median), color = NativeLanguage, y = GradeMath4IT)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Native Language") +
+  ylab ("Grade Math4IT") +
+  ggtitle("Boxplot for Grade Math4IT ~ Native Language")
+```
+
+Extra histogram om de verdeling aan te tonen tov. de dichtheid:
+
+```{r}
+mu <- ddply(math4IT, "NativeLanguage", summarise, grp.mean=mean(GradeMath4IT))
+ggplot(math4IT, aes(x=GradeMath4IT, color=NativeLanguage, fill=NativeLanguage)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=NativeLanguage),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for Math4IT", y = "Density")+
+  theme_classic()
+```
+
+### GradeMath4IT ~ BirthCountry
+
+```{r}
+ggplot(math4IT, aes(x=GradeMath4IT, y=BirthCountry)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = math4IT, mapping = aes(x = reorder(BirthCountry, GradeMath4IT, FUN = median), color = BirthCountry, y = GradeMath4IT)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Birth Country") +
+  ylab ("Grade Math4IT") +
+  ggtitle("Boxplot for Grade Math4IT ~ Birth Country")
+```
+
+```{r}
+mu <- ddply(math4IT, "BirthCountry", summarise, grp.mean=mean(GradeMath4IT))
+ggplot(math4IT, aes(x=GradeMath4IT, color=BirthCountry, fill=BirthCountry)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=BirthCountry),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for Math4IT", y = "Density")+
+  theme_classic()
+```
+
+### GradeMath4IT ~ OtherLanguages
+
+```{r}
+ggplot(math4IT, aes(x=GradeMath4IT, y=Nederlands)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = math4IT, mapping = aes(x = reorder(Nederlands, GradeMath4IT, FUN = median), color = Nederlands, y = GradeMath4IT)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Speaks Dutch") +
+  ylab ("Grade Math4IT") +
+  ggtitle("Boxplot for Grade Math4IT ~ Speaks Dutch")
+```
+
+```{r}
+mu <- ddply(math4IT, "Nederlands", summarise, grp.mean=mean(GradeMath4IT))
+ggplot(math4IT, aes(x=GradeMath4IT, color=Nederlands, fill=Nederlands)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=Nederlands),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for Math4IT", y = "Density")+
+  theme_classic()
+```
+
+## Grafieken TestQ01-TestQ05
+
+
+De nodige variabelen in een nieuwe dataset steken en alle lege waarden eruit filteren.
+
+```{r}
+niveau1Wiskunde <- data[, c("NativeLanguage", "BirthCountry", "OtherLanguages", "TestQ01", "TestQ02", "TestQ03", "TestQ04", "TestQ05")]
+# alle foutieve waarden filteren
+is.na(niveau1Wiskunde$TestQ01) <-  niveau1Wiskunde$TestQ01 < 0 | niveau1Wiskunde$TestQ01 >1
+is.na(niveau1Wiskunde$TestQ02) <-  niveau1Wiskunde$TestQ02 < 0 | niveau1Wiskunde$TestQ01 >1
+is.na(niveau1Wiskunde$TestQ03) <-  niveau1Wiskunde$TestQ03 < 0 | niveau1Wiskunde$TestQ01 >1
+is.na(niveau1Wiskunde$TestQ04) <-  niveau1Wiskunde$TestQ04 < 0 | niveau1Wiskunde$TestQ01 >1
+is.na(niveau1Wiskunde$TestQ05) <-  niveau1Wiskunde$TestQ05 < 0 | niveau1Wiskunde$TestQ01 >1
+
+niveau1Wiskunde <- niveau1Wiskunde %>% filter_all(all_vars(!is.na(.)))
+niveau1Wiskunde$TotaalLagerOnderwijs <- (niveau1Wiskunde$TestQ01 + niveau1Wiskunde$TestQ02 + niveau1Wiskunde$TestQ03 + niveau1Wiskunde$TestQ04 + niveau1Wiskunde$TestQ05)
+```
+
+niveau1Wiskunde-data opdelen in NativeLanguage "Nederlands" en "Overige" om zo twee groepen te bekomen.
+
+```{r}
+niveau1Wiskunde$NativeLanguage <- replace(x = niveau1Wiskunde$NativeLanguage, 
+                               list =  !niveau1Wiskunde$NativeLanguage %in% c('Nederlands'), 
+                               values =  'Overige')
+```
+
+niveau1Wiskunde-data opdelen in BirthCountry "Belgium" en "Other" om zo twee groepen te bekomen.
+
+```{r}
+niveau1Wiskunde$BirthCountry <- ifelse(grepl("BelgiÃ«", niveau1Wiskunde$BirthCountry), "Belgium", "Other")
+#niveau1Wiskunde$BirthCountry <- ifelse(grepl("België", niveau1Wiskunde$BirthCountry), "Belgium", "Other")
+```
+niveau1Wiskunde-data opdelen in personen die thuis Nederlands spreken en personen die thuis geen Nederlands spreken om zo twee groepen te bekomen.
+
+```{r}
+niveau1Wiskunde$Nederlands <- replace(x = niveau1Wiskunde$OtherLanguages,
+                                 list =  niveau1Wiskunde$OtherLanguages %in% c('Nederlands'), 
+                                 values =  'Yes')
+
+
+niveau1Wiskunde$Nederlands[niveau1Wiskunde$NativeLanguage == "Nederlands"] <- "Yes"
+niveau1Wiskunde$Nederlands <- ifelse(grepl("Nederlands", niveau1Wiskunde$Nederlands), "Yes", niveau1Wiskunde$Nederlands)
+niveau1Wiskunde$Nederlands[niveau1Wiskunde$Nederlands != "Yes"] <- "No"
+```
+
+
+### TestQ01-TestQ05 ~ NativeLanguage
+
+Basic boxplot tekenen:
+
+```{r}
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, y=NativeLanguage)) + 
+  geom_boxplot()
+```
+
+Uitgebreide boxplot tekenen met alle punten:
+
+```{r}
+ggplot(data = niveau1Wiskunde, mapping = aes(x = reorder(NativeLanguage, TotaalLagerOnderwijs, FUN = median), color = NativeLanguage, y = TotaalLagerOnderwijs)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Native Language") +
+  ylab ("Grade niveau1Wiskunde") +
+  ggtitle("Boxplot for Grade niveau1Wiskunde ~ Native Language")
+```
+
+Extra histogram om de verdeling aan te tonen tov. de dichtheid:
+
+```{r}
+mu <- ddply(niveau1Wiskunde, "NativeLanguage", summarise, grp.mean=mean(TotaalLagerOnderwijs))
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, color=NativeLanguage, fill=NativeLanguage)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=NativeLanguage),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for niveau1Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ01-TestQ05 ~ BirthCountry
+
+```{r}
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, y=BirthCountry)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau1Wiskunde, mapping = aes(x = reorder(BirthCountry, TotaalLagerOnderwijs, FUN = median), color = BirthCountry, y = TotaalLagerOnderwijs)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Birth Country") +
+  ylab ("Grade Math4IT") +
+  ggtitle("Boxplot for Grade niveau1Wiskunde ~ Birth Country")
+```
+
+```{r}
+mu <- ddply(niveau1Wiskunde, "BirthCountry", summarise, grp.mean=mean(TotaalLagerOnderwijs))
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, color=BirthCountry, fill=BirthCountry)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=BirthCountry),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for niveau1Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ01-TestQ05 ~ OtherLanguages
+
+```{r}
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, y=Nederlands)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau1Wiskunde, mapping = aes(x = reorder(Nederlands, TotaalLagerOnderwijs, FUN = median), color = Nederlands, y = TotaalLagerOnderwijs)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Speaks Dutch") +
+  ylab ("Grade niveau1Wiskunde") +
+  ggtitle("Boxplot for Grade niveau1Wiskunde ~ Speaks Dutch")
+```
+
+```{r}
+mu <- ddply(niveau1Wiskunde, "Nederlands", summarise, grp.mean=mean(TotaalLagerOnderwijs))
+ggplot(niveau1Wiskunde, aes(x=TotaalLagerOnderwijs, color=Nederlands, fill=Nederlands)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=Nederlands),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for niveau1Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+
+
+## Grafieken TestQ06-TestQ10
+
+
+De nodige variabelen in een nieuwe dataset steken en alle lege waarden eruit filteren.
+
+```{r}
+niveau2Wiskunde <- data[, c("NativeLanguage", "BirthCountry" ,"OtherLanguages", "TestQ06", "TestQ07","TestQ08","TestQ09", "TestQ10")]
+# alle foutieve waarden filteren
+is.na(niveau2Wiskunde$TestQ06) <-  niveau2Wiskunde$TestQ06 < 0 | niveau2Wiskunde$TestQ06 >1
+is.na(niveau2Wiskunde$TestQ07) <-  niveau2Wiskunde$TestQ07 < 0 | niveau2Wiskunde$TestQ07 >1
+is.na(niveau2Wiskunde$TestQ08) <-  niveau2Wiskunde$TestQ08 < 0 | niveau2Wiskunde$TestQ08 >1
+is.na(niveau2Wiskunde$TestQ09) <-  niveau2Wiskunde$TestQ09 < 0 | niveau2Wiskunde$TestQ09 >1
+is.na(niveau2Wiskunde$TestQ10) <-  niveau2Wiskunde$TestQ10 < 0 | niveau2Wiskunde$TestQ10 >1
+
+niveau2Wiskunde <- niveau2Wiskunde %>% filter_all(all_vars(!is.na(.)))
+niveau2Wiskunde$totaalNiveau2 <- (niveau2Wiskunde$TestQ06 + niveau2Wiskunde$TestQ07 + niveau2Wiskunde$TestQ08 + niveau2Wiskunde$TestQ09 + niveau2Wiskunde$TestQ10)
+```
+
+niveau2Wiskunde-data opdelen in NativeLanguage "Nederlands" en "Overige" om zo twee groepen te bekomen.
+
+```{r}
+niveau2Wiskunde$NativeLanguage <- replace(x = niveau2Wiskunde$NativeLanguage,
+                               list =  !niveau2Wiskunde$NativeLanguage %in% c('Nederlands'),
+                               values =  'Overige')
+```
+
+niveau2Wiskunde-data opdelen in BirthCountry "Belgium" en "Other" om zo twee groepen te bekomen.
+
+```{r}
+niveau2Wiskunde$BirthCountry <- ifelse(grepl("BelgiÃ«", niveau2Wiskunde$BirthCountry), "Belgium", "Other")
+#niveau2Wiskunde$BirthCountry <- ifelse(grepl("België", niveau2Wiskunde$BirthCountry), "Belgium", "Other")
+```
+
+niveau2Wiskunde-data opdelen in personen die thuis Nederlands spreken en personen die thuis geen Nederlands spreken om zo twee groepen te bekomen.
+
+```{r}
+niveau2Wiskunde$Nederlands <- replace(x = niveau2Wiskunde$OtherLanguages,
+                                 list =  niveau2Wiskunde$OtherLanguages %in% c('Nederlands'),
+                                 values =  'Yes')
+
+
+niveau2Wiskunde$Nederlands[niveau2Wiskunde$NativeLanguage == "Nederlands"] <- "Yes"
+niveau2Wiskunde$Nederlands <- ifelse(grepl("Nederlands", niveau2Wiskunde$Nederlands), "Yes", niveau2Wiskunde$Nederlands)
+niveau2Wiskunde$Nederlands[niveau2Wiskunde$Nederlands != "Yes"] <- "No"
+```
+
+
+### TestQ06-TestQ10 ~ NativeLanguage
+
+Basic boxplot tekenen:
+
+```{r}
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, y=NativeLanguage)) +
+  geom_boxplot()
+```
+
+Uitgebreide boxplot tekenen met alle punten:
+
+```{r}
+ggplot(data = niveau2Wiskunde, mapping = aes(x = reorder(NativeLanguage, totaalNiveau2, FUN = median), color = NativeLanguage, y = totaalNiveau2)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Native Language") +
+  ylab ("Grade niveau2Wiskunde") +
+  ggtitle("Boxplot for Grade level 2 Wiskunde ~ Native Language")
+```
+
+Extra histogram om de verdeling aan te tonen tov. de dichtheid:
+
+```{r}
+mu <- ddply(niveau2Wiskunde, "NativeLanguage", summarise, grp.mean=mean(totaalNiveau2))
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, color=NativeLanguage, fill=NativeLanguage)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=NativeLanguage),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for level 2 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ06-TestQ10 ~ BirthCountry
+
+```{r}
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, y=BirthCountry)) +
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau2Wiskunde, mapping = aes(x = reorder(BirthCountry, totaalNiveau2, FUN = median), color = BirthCountry, y = totaalNiveau2)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Birth Country") +
+  ylab ("Grade TestQ06-TestQ10") +
+  ggtitle("Boxplot for level 2 Wiskunde ~ Birth Country")
+```
+
+```{r}
+mu <- ddply(niveau2Wiskunde, "BirthCountry", summarise, grp.mean=mean(totaalNiveau2))
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, color=BirthCountry, fill=BirthCountry)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=BirthCountry),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for level 2 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ06-TestQ10 ~ OtherLanguages
+
+```{r}
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, y=Nederlands)) +
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau2Wiskunde, mapping = aes(x = reorder(Nederlands, totaalNiveau2, FUN = median), color = Nederlands, y = totaalNiveau2)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Speaks Dutch") +
+  ylab ("Grade niveau2Wiskunde") +
+  ggtitle("Boxplot for Grade level 2 Wiskunde ~ Speaks Dutch")
+```
+
+```{r}
+mu <- ddply(niveau2Wiskunde, "Nederlands", summarise, grp.mean=mean(totaalNiveau2))
+ggplot(niveau2Wiskunde, aes(x=totaalNiveau2, color=Nederlands, fill=Nederlands)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=Nederlands),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for level 2 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+
+## Grafieken TestQ11-TestQ15
+
+
+De nodige variabelen in een nieuwe dataset steken en alle lege waarden eruit filteren.
+
+```{r}
+niveau3Wiskunde <- data[, c("NativeLanguage", "BirthCountry" ,"OtherLanguages", "TestQ11", "TestQ12","TestQ13","TestQ14", "TestQ15")]
+# alle foutieve waarden filteren
+is.na(niveau3Wiskunde$TestQ11) <-  niveau3Wiskunde$TestQ11 < 0 | niveau3Wiskunde$TestQ11 >1
+is.na(niveau3Wiskunde$TestQ12) <-  niveau3Wiskunde$TestQ12 < 0 | niveau3Wiskunde$TestQ12 >1
+is.na(niveau3Wiskunde$TestQ13) <-  niveau3Wiskunde$TestQ13 < 0 | niveau3Wiskunde$TestQ13 >1
+is.na(niveau3Wiskunde$TestQ14) <-  niveau3Wiskunde$TestQ14 < 0 | niveau3Wiskunde$TestQ14 >1
+is.na(niveau3Wiskunde$TestQ15) <-  niveau3Wiskunde$TestQ15 < 0 | niveau3Wiskunde$TestQ15 >1
+
+niveau3Wiskunde <- niveau3Wiskunde %>% filter_all(all_vars(!is.na(.)))
+niveau3Wiskunde$totaalNiveau3 <- (niveau3Wiskunde$TestQ11 + niveau3Wiskunde$TestQ12 + niveau3Wiskunde$TestQ13 + niveau3Wiskunde$TestQ14 + niveau3Wiskunde$TestQ15)
+```
+
+niveau3Wiskunde-data opdelen in NativeLanguage "Nederlands" en "Overige" om zo twee groepen te bekomen.
+
+```{r}
+niveau3Wiskunde$NativeLanguage <- replace(x = niveau3Wiskunde$NativeLanguage,
+                               list =  !niveau3Wiskunde$NativeLanguage %in% c('Nederlands'),
+                               values =  'Overige')
+```
+
+niveau3Wiskunde-data opdelen in BirthCountry "Belgium" en "Other" om zo twee groepen te bekomen.
+
+```{r}
+niveau3Wiskunde$BirthCountry <- ifelse(grepl("BelgiÃ«", niveau3Wiskunde$BirthCountry), "Belgium", "Other")
+#niveau3Wiskunde$BirthCountry <- ifelse(grepl("België", niveau3Wiskunde$BirthCountry), "Belgium", "Other")
+```
+
+niveau3Wiskunde-data opdelen in personen die thuis Nederlands spreken en personen die thuis geen Nederlands spreken om zo twee groepen te bekomen.
+
+```{r}
+niveau3Wiskunde$Nederlands <- replace(x = niveau3Wiskunde$OtherLanguages,
+                                 list =  niveau3Wiskunde$OtherLanguages %in% c('Nederlands'),
+                                 values =  'Yes')
+
+
+niveau3Wiskunde$Nederlands[niveau3Wiskunde$NativeLanguage == "Nederlands"] <- "Yes"
+niveau3Wiskunde$Nederlands <- ifelse(grepl("Nederlands", niveau3Wiskunde$Nederlands), "Yes", niveau3Wiskunde$Nederlands)
+niveau3Wiskunde$Nederlands[niveau3Wiskunde$Nederlands != "Yes"] <- "No"
+```
+
+
+### TestQ11-TestQ15 ~ NativeLanguage
+
+Basic boxplot tekenen:
+
+```{r}
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, y=NativeLanguage)) +
+  geom_boxplot()
+```
+
+Uitgebreide boxplot tekenen met alle punten:
+
+```{r}
+ggplot(data = niveau3Wiskunde, mapping = aes(x = reorder(NativeLanguage, totaalNiveau3, FUN = median), color = NativeLanguage, y = totaalNiveau3)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Native Language") +
+  ylab ("Grade niveau3Wiskunde") +
+  ggtitle("Boxplot for Grade level 3 Wiskunde ~ Native Language")
+```
+
+Extra histogram om de verdeling aan te tonen tov. de dichtheid:
+
+```{r}
+mu <- ddply(niveau3Wiskunde, "NativeLanguage", summarise, grp.mean=mean(totaalNiveau3))
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, color=NativeLanguage, fill=NativeLanguage)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=NativeLanguage),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for level 3 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ11-TestQ15 ~ BirthCountry
+
+```{r}
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, y=BirthCountry)) +
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau3Wiskunde, mapping = aes(x = reorder(BirthCountry, totaalNiveau3, FUN = median), color = BirthCountry, y = totaalNiveau3)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Birth Country") +
+  ylab ("Grade level 3 Wiskunde") +
+  ggtitle("Boxplot for level 3 Wiskunde ~ Birth Country")
+```
+
+```{r}
+mu <- ddply(niveau3Wiskunde, "BirthCountry", summarise, grp.mean=mean(totaalNiveau3))
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, color=BirthCountry, fill=BirthCountry)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=BirthCountry),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades",x="Grades for level 3 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+### TestQ11-TestQ15 ~ OtherLanguages
+
+```{r}
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, y=Nederlands)) +
+  geom_boxplot()
+```
+
+```{r}
+ggplot(data = niveau3Wiskunde, mapping = aes(x = reorder(Nederlands, totaalNiveau3, FUN = median), color = Nederlands, y = totaalNiveau3)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.35) +
+  coord_flip() +
+  xlab ("Thuis Nederlands Spreken") +
+  ylab ("Grade niveau3Wiskunde") +
+  ggtitle("Boxplot for Grade level 3 Wiskunde ~ Speaks Dutch")
+```
+
+```{r}
+mu <- ddply(niveau3Wiskunde, "Nederlands", summarise, grp.mean=mean(totaalNiveau3))
+ggplot(niveau3Wiskunde, aes(x=totaalNiveau3, color=Nederlands, fill=Nederlands)) +
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3)+
+  geom_density(alpha=0.4)+
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=Nederlands),
+             linetype="dashed")+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title="Grades for level 3 Wiskunde ~ Speaks Dutch",x="Grades for level 3 Wiskunde", y = "Density")+
+  theme_classic()
+```
+
+# Analyse van kwalitatieve vs. kwantitatieve variabelen
+
+We definiëren eerst een functie t die ons zegt wanneer we de H0 kunnen verwerpen of niet. Deze functie kunnen we nu gebruiken in alle testen.
+
+```{r}
+t <- function(alf, alt, x, y){
+  tRes <- t.test(x, y, alternative = alt, mu = 0, conf.level = 1-alf)
+  p <- tRes$p.value
+  if (p < alfa){
+    sprintf("p (%s) is kleiner dan alfa (%s), dus we kunnen de H0 WEL verwerpen.", p, alfa)
+  } else {
+    sprintf("p (%s) is groter dan alfa (%s), dus we kunnen de H0 NIET verwerpen.", p, alfa)
+  }
+}
+```
+
+## GradeMath4IT
+
+### 1. Hypothese opstellen
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other  
+$H_1$: $\overline{x} - \overline{y} > 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+
+### 2. Significantieniveau
+```{r}
+alfa <- 0.05
+```
+
+### 3. Toetsing
+#### Math4IT <-> Native Language
+```{r}
+t(alfa, "greater", math4IT$GradeMath4IT[math4IT$NativeLanguage == 'Nederlands'], math4IT$GradeMath4IT[math4IT$NativeLanguage == 'Overige'])
+
+```
+
+#### Math4IT <-> Birth Country
+```{r}
+t(alfa, "greater", math4IT$GradeMath4IT[math4IT$BirthCountry == 'Belgium'], math4IT$GradeMath4IT[math4IT$BirthCountry == 'Other'])
+```
+#### Math4IT <-> Other Languages
+```{r}
+t(alfa, "greater", math4IT$GradeMath4IT[math4IT$Nederlands == 'Yes'], math4IT$GradeMath4IT[math4IT$Nederlands == 'No'])
+```
+
+
+## TestQ01-TestQ05
+
+### 1. Hypothese opstellen
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+
+### 2. Significantieniveau
+```{r}
+alfa <- 0.05
+```
+
+### 3. Toetsing
+#### TestQ01-TestQ05 <-> Native Language
+```{r}
+t(alfa, "greater", niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$NativeLanguage == 'Nederlands'], niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$NativeLanguage == 'Overige'])
+```
+
+#### TestQ01-TestQ05 <-> Birth Country
+```{r}
+t(alfa, "greater", niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$BirthCountry == 'Belgium'], niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$BirthCountry == 'Other'])
+```
+
+#### TestQ01-TestQ05 <-> Other Languages
+```{r}
+t(alfa, "greater", niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$Nederlands == 'Yes'], niveau1Wiskunde$TotaalLagerOnderwijs[niveau1Wiskunde$Nederlands == 'No'])
+```
+
+## TestQ06-TestQ10
+
+### 1. Hypothese opstellen
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+
+### 2. Significantieniveau
+```{r}
+alfa <- 0.05
+```
+
+### 3. Toetsing
+#### TestQ01-TestQ05 <-> Native Language
+```{r}
+t(alfa, "greater", niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$NativeLanguage == 'Nederlands'], niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$NativeLanguage == 'Overige'])
+```
+
+#### TestQ01-TestQ05 <-> Birth Country
+```{r}
+t(alfa, "greater", niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$BirthCountry == 'Belgium'], niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$BirthCountry == 'Other'])
+```
+
+#### TestQ01-TestQ05 <-> Other Languages
+```{r}
+t(alfa, "greater", niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$Nederlands == 'Yes'], niveau2Wiskunde$totaalNiveau2[niveau2Wiskunde$Nederlands == 'No'])
+```
+
+## TestQ11-TestQ15
+
+### 1. Hypothese opstellen
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = NativeLanguage Nederlands en Y = NativeLanguage Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = BirthCountry België en Y = BirthCountry Other
+
+$H_0$: $\overline{x} - \overline{y} = 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+$H_0$: $\overline{x} - \overline{y} > 0$, waarbij X = OtherLanguages ThuisNederlandsOfNativeLanguageNederlands en Y = OtherLanguages GeenExtraNederlands
+
+### 2. Significantieniveau
+```{r}
+alfa <- 0.05
+```
+
+### 3. Toetsing
+#### TestQ01-TestQ05 <-> Native Language
+```{r}
+t(alfa, "greater", niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$NativeLanguage == 'Nederlands'], niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$NativeLanguage == 'Overige'])
+```
+
+#### TestQ01-TestQ05 <-> Birth Country
+```{r}
+t(alfa, "greater", niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$BirthCountry == 'Belgium'], niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$BirthCountry == 'Other'])
+```
+
+#### TestQ01-TestQ05 <-> Other Languages
+```{r}
+t(alfa, "greater", niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$Nederlands == 'Yes'], niveau3Wiskunde$totaalNiveau3[niveau3Wiskunde$Nederlands == 'No'])
+```
+
+## Conclusie
+
+Bij aanvang van dit onderzoek gingen we ervan uit dat een taalbarrière een negatieve impact zou hebben op de wiskundige geletterdheid van Vlaamse studenten. Uit onze data bleek echter dat een dergelijke negatieve impact niet aan te tonen is met onze steekproef. 
+
+De steekproef die werd gebruikt voor ons onderzoek is geen perfecte representatie, de steekproefgrootte bedraagt ongeveer 220 personen, waarvan er maar een twintigtal geen Nederlands hebben als moedertaal.   
+
+Bij de boxplots is steeds veel overlap te zien, dit wijst er meestal op dat er geen verband is. Uit het laatste deel van de analyse, waarbij we alle kwalitatieve en kwantitatieve variabelen hebben getest t.o.v. elkaar, blijkt dat voor geen enkele combinatie de oorspronkelijke hypothese H0 verworpen mag worden. 
+
+Dit toont aan dat er geen duidelijk verband is tussen de variabelen, wat dan ook onze hoofdhypothese en onderzoeksvraag bewijst:   
+
+Het hebben van een andere moedertaal, frequent een andere taal spreken of land van geboorte, heeft weinig tot geen invloed op de wiskundige geletterdheid bij studenten in het Vlaamse hoger onderwijs.
+
